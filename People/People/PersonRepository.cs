@@ -1,60 +1,65 @@
 ﻿using People.Models;
 using SQLite;
+using System.Threading.Tasks;
 
 namespace People
 {
     public class PersonRepository
 {
     string _dbPath;
-    private SQLiteConnection conn;
-
     public string StatusMessage { get; set; }
 
-    private void Init()
-    {
-        if (conn != null)
-            return;
+        private SQLiteAsyncConnection conn;
 
-        conn = new SQLiteConnection(_dbPath);
-        conn.CreateTable<Person>();
-    }
+        private async Task Init()
+        {
+            if (conn != null)
+                return;
 
-    public PersonRepository(string dbPath)
+            conn = new SQLiteAsyncConnection(_dbPath);
+
+            await conn.CreateTableAsync<Person>();
+        }
+        public PersonRepository(string dbPath)
     {
         _dbPath = dbPath;
     }
 
-    public void AddNewPerson(string name)
-    {
-        int result = 0;
-        try
+        public async Task AddNewPerson(string name)
         {
-            Init();
+            int result = 0;
+            try
+            {
+                // Call Init()
+                await Init();
 
-            if (string.IsNullOrEmpty(name))
-                throw new Exception("Valid name required");
+                // basic validation to ensure a name was entered
+                if (string.IsNullOrEmpty(name))
+                    throw new Exception("Valid name required");
 
-            result = conn.Insert(new Person { Name = name });
-            StatusMessage = string.Format("{0} record(s) added (Name: {1})", result, name);
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = string.Format("Failed to add {0}. Error: {1}", name, ex.Message);
-        }
-    }
+                result = await conn.InsertAsync(new Person { Name = name });
 
-    public List<Person> GetAllPeople()
-    {
-        try
-        {
-            Init();
-            return conn.Table<Person>().ToList();
+                StatusMessage = string.Format("{0} record(s) added [Name: {1})", result, name);
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format("Failed to add {0}. Error: {1}", name, ex.Message);
+            }
         }
-        catch (Exception ex)
+
+        public async Task<List<Person>> GetAllPeople()
         {
-            StatusMessage = string.Format("Failed to retrieve data. {0}", ex.Message);
+            try
+            {
+                await Init();
+                return await conn.Table<Person>().ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = string.Format("Failed to retrieve data. {0}", ex.Message);
+            }
+
             return new List<Person>();
         }
     }
-}
 }
